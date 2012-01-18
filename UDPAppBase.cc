@@ -53,6 +53,28 @@ void UDPAppBase::sendToUDP(cPacket *msg, int srcPort, const IPvXAddress& destAdd
     printPacket(msg);
 
     send(msg, "udpOut");
+
+}
+
+void UDPAppBase::sendToUDPDelayed(cPacket *msg, int srcPort, const IPvXAddress& destAddr, int destPort)
+{
+    // send message to UDP, with the appropriate control info attached
+    msg->setKind(UDP_C_DATA);
+
+    UDPControlInfo *ctrl = new UDPControlInfo();
+    ctrl->setSrcPort(srcPort);
+    ctrl->setDestAddr(destAddr);
+    ctrl->setDestPort(destPort);
+    // needed for broadcast
+    ctrl->setInterfaceId(101);
+
+    msg->setControlInfo(ctrl);
+
+    EV << "Sending packet: ";
+    printPacket(msg);
+
+    sendDelayed(msg, (uniform(0,(double)0.2)) , "udpOut");
+
 }
 
 void UDPAppBase::printPacket(cPacket *msg)

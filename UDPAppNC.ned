@@ -28,14 +28,19 @@ simple UDPAppNC like UDPApp
         int destPort;
         
         int generationSize = default(1);
-        int FiniteFieldPower = default(4); // FF dimension = 2^FiniteFieldPower
+        int FiniteFieldPower = default(4); 	// FF dimension = 2^FiniteFieldPower
         int random_seed = default(1456);
         int nTotalNodes = default(1);		// number of total nodes in the network
-        string role = default("client"); // can be "client", "AP"
-        								 // or
-        								 // "startPoint" "STARPoint" "endPoint"
+        string role = default("client"); 	// can be "client", "AP"
+        								 	// or
+        								 	// "startPoint" "STARPoint" "endPoint"
         								 
-        bool butterfly_nc = default(true); // if false disable nc in butterfly network
+        bool butterfly_nc = default(true); 	// if false disable nc in butterfly network
+        
+        
+        //bool butterfly_nc_multi_gen_size = default (false);
+        									// if false each gen has only 1pkt
+        									// if true each gen use generationSize
         
         string linked_AP_UDPApp = default("host[0].udpApp[0]");   
         									// used only if the node is a client
@@ -43,12 +48,17 @@ simple UDPAppNC like UDPApp
         				
         string statistics_collector = default("host[0].udpApp[0]");   
         									// node that should calculate statistics
+        									// used in butterfly network
+        									
+        // name of the start point nodes, used by star point to start a new generation
+        string start_point_1 = default("host[0].udpApp[0]");
+        string start_point_2 = default("host[0].udpApp[0]");
         					
         									
         
         volatile int messageLength @unit("B"); // length of messages to generate, int bytes
         volatile double messageFreq @unit("s"); // should usually be a random value, e.g. exponential(1)
-        string destAddresses = default("host[10]"); // list of \IP addresses, separated by spaces
+        string destAddresses = default("host[0]"); // list of \IP addresses, separated by spaces
         @display("i=block/app");
     gates:
         input udpIn @labels(UDPControlInfo/up);

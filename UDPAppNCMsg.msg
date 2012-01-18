@@ -30,7 +30,12 @@ packet UDPAppNCMsg
    
     unsigned int generation;
     unsigned int total_pkt_num;		// number of message coded inside the payload
+    
+    
+    bool isCombination = false;		// used in butterfly is true if the packet
+    								// is generated in the STAR node
 
+	string source;					// host name + udp app source
 }
 
 packet UDPAppNCMsg_Butterfly
@@ -38,7 +43,9 @@ packet UDPAppNCMsg_Butterfly
     bool isCombination = false;
 	unsigned char payload[];	   
     unsigned int generation;
-    simtime_t send_time;
+    //simtime_t send_time;
+    string source;
+    
 
 }
 
