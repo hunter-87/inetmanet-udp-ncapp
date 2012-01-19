@@ -107,7 +107,7 @@ class UDPAppNC : public UDPAppBase
 
     unsigned int generation;		// actual generation
     std::map<std::string, unsigned int> generationDecoded;  // save the last generation decoded
-    int packetsDecoded;		// counter of packets decoded up until now (used by clients)
+    std::map<std::string, unsigned int> packetsDecoded;		// counter of packets decoded up until now (used by clients)
 
     unsigned int currentGeneration;
     int numNetworkNodes;	// total number of net nodes (included AP)

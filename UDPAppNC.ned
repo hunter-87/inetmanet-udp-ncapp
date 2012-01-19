@@ -29,7 +29,7 @@ simple UDPAppNC like UDPApp
         
         int generationSize = default(1);
         int FiniteFieldPower = default(4); 	// FF dimension = 2^FiniteFieldPower
-        int random_seed = default(1456);
+        int random_seed = default(145226);
         int nTotalNodes = default(1);		// number of total nodes in the network
         string role = default("client"); 	// can be "client", "AP"
         								 	// or

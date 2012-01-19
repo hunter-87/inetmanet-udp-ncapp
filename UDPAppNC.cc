@@ -38,8 +38,15 @@ int UDPAppNC::counter;
  *
  */
 void UDPAppNC::incrementAckCounter(){
+	std::cout << getFullPath() << " Incremento ack " <<std::endl;
 	ackCounter++;
 	if (ackCounter == numNetworkNodes -1){
+
+		std::cout << " start generation false " << std::endl;
+		// stop the start point from sending another simulation
+		// until the end points had decoded everything
+		start_new_generation = false;
+
 		gen_end_time = simTime();
 	}
 	//std::cout << " NODE "<<getParentModule()->getFullName()<< " has increased the ack to "<<ackCounter <<std::endl;
@@ -51,8 +58,9 @@ void UDPAppNC::incrementAckCounter(){
  *
  */
 void UDPAppNC::startNewGeneration(){
-	std::cout << " START NEW GENERATION" << std::endl;
+	std::cout << getFullPath()<<" START NEW GENERATION" << std::endl;
 	if (nodeRole == "startPoint"){
+		std::cout << "  " << getFullPath()<<" START = TRUE " << std::endl;
 		start_new_generation = true;
 	}
 }
@@ -75,21 +83,25 @@ void UDPAppNC::saveStatistics(unsigned int gen, simtime_t generation_time){
 	} else {
 
 		simtime_t previous_time = (*it).second;
-		std::cout << "PRimo Tempo "<<generation_time << " Secondo tempo " <<previous_time ;
+		std::cout << "PRimo Tempo "<<generation_time/double(blockNumber) << " Secondo tempo " <<previous_time/double(blockNumber) ;
 
 		// save worst case
 		if (generation_time < previous_time){
-			std::cout << " Scelgo "<< ( previous_time)<< std::endl;
-			BUTTERFLYGENERATIONTime.record(previous_time);
+			std::cout << " Scelgo "<< ( previous_time/double(blockNumber))<< std::endl;
+			BUTTERFLYGENERATIONTime.record(previous_time/double(blockNumber));
 		} else {
-			std::cout << " Scelgo "<< (generation_time )<< std::endl;
-			BUTTERFLYGENERATIONTime.record(generation_time);
+			std::cout << " Scelgo "<< (generation_time/double(blockNumber) )<< std::endl;
+			BUTTERFLYGENERATIONTime.record(generation_time/double(blockNumber));
 		}
 
 		statistics_table.erase(it);
 
-		std::cout << " Start new Generation " <<std::endl;
+		std::cout <<getFullPath()<< ": Start new Generation " <<std::endl;
 		// start a new generation
+
+		std::cout <<"primo modulo " <<par("start_point_1").stringValue() <<std::endl;
+		std::cout <<"secondo modulo " <<par("start_point_2").stringValue() <<std::endl;
+
 		check_and_cast<UDPAppNC *>(getParentModule()->getParentModule()->getModuleByRelativePath(par("start_point_1").stringValue()))->startNewGeneration();
 		check_and_cast<UDPAppNC *>(getParentModule()->getParentModule()->getModuleByRelativePath(par("start_point_2").stringValue()))->startNewGeneration();
 
@@ -123,7 +135,7 @@ void UDPAppNC::initialize(int stage)
 //    decoder_ = 0;	// ptr to the decoder
 //    decoder_b = 0;
     nodeRole = par("role").stringValue();//.str();
-    packetsDecoded = 0;
+
     start_new_generation = true;	//used in butterfly network
     star_send_packets = false;
     generation = 0;			// actual generation in the network
@@ -221,14 +233,14 @@ void UDPAppNC::createCodedPackets() {
 	inputPackets.reserve(blockNumber);
 
 
-	//std::cout << " CREATING NEW SET OF CODEWORDS "<< std::endl;
+	std::cout << " CREATING NEW SET OF CODEWORDS "<< std::endl;
 
 	for ( int i = 0 ; i < blockNumber ; i++) {
 		unsigned char* payload = new unsigned char[payloadLen];
 
 		std::fill(payload, payload+payloadLen, 0x00+(i+generation)%255);
 		inputPackets.push_back(new UncodedPacket(i, payload, payloadLen));
-		//std::cout<< "Uncodedpacket: " << i << ": "<< inputPackets[i]->toString()<< std::endl;
+		std::cout<< "Uncodedpacket: " << i << ": "<< inputPackets[i]->toString()<< std::endl;
 
 		// free memory since uncodedpacket() creates a copy
 		delete [] payload;
@@ -401,8 +413,11 @@ void UDPAppNC::handleMessage(cMessage *msg)
 
 			if (ackCounter == numNetworkNodes - 1){ // -1 since the AP is included
 
+				resetAckCounter();
+
 				// when a star point has all the acks from the endpoints, it stops itself
 				if (nodeRole == "STARPoint" ){
+					//std::cout << " STAR ha tutti gli ack reset"<<std::endl;
 					star_send_packets = false;
 					return;
 				}
@@ -410,16 +425,13 @@ void UDPAppNC::handleMessage(cMessage *msg)
 				GENERATIONTime.record( fabs(gen_start_time - gen_end_time));
 				PACKETTime.record(fabs(gen_start_time - gen_end_time)/double(blockNumber));
 
-				resetAckCounter();
-
 				//std::cout << " Received "<<ackCounter<<" ack. creating new set to send "<<std::endl;
 				//std::cout<<" GENERATION " <<fabs(gen_end_time - gen_start_time)<<std::endl;
 				//std::cout<<" PACKET " <<fabs(gen_end_time - gen_start_time)/double(blockNumber)<<std::endl;
 
-				// stop the start point from sending another simulation
-				// until the end points had decoded everything
-				start_new_generation = false;
 
+
+				std::cout << "Creo nuove codeword e incremento generazione " << std::endl;
 				// if we have all the acks we need to create another set of codewords
 				createCodedPackets();
 
@@ -531,14 +543,19 @@ void UDPAppNC::processPacket(cPacket *msg) {
 	if (nodeRole == "endPoint")
 		endpoint_start_time.push_back(udp_msg->getCreationTime());
 
+
+
     // recover the source from the packet
     std::string source(udp_msg->getSource());
 
     if (udp_msg->getGeneration() <= generationDecoded[source]){
-    	std::cout << "Node: "<<getFullPath()<<" packet from :"<<source<<" this generation has already been decoded. skipping" <<std::endl;
+    	std::cout << "Node: "<<getFullPath()<<" packet from :"<<source<<" this generation ["<< udp_msg->getGeneration() << "] has already been decoded. skipping" <<std::endl;
     	delete msg;
     	return;
     }
+
+
+
     currentGeneration = udp_msg->getGeneration();
 
     CodedPacket* coded_packet_ = rebuildCodedPacketFromUDPMSG(udp_msg);
@@ -582,14 +599,28 @@ void UDPAppNC::processPacket(cPacket *msg) {
 //		nc_table[source].insert(nc_table[source].end(), uncoded_pkts_.begin(), uncoded_pkts_.end());
 //	}
 
+	if (udp_msg->getGeneration() >= 15 and nodeRole == "STARPoint") {
+		std::cout << " ########## "<< source <<" packetsDecoded = " << packetsDecoded[source] << " + " << uncoded_pkts_.size() << " = "<< packetsDecoded[source] + uncoded_pkts_.size() <<std::endl;
+	}
+
 	// count the number of packets decoded up until now
-	packetsDecoded = packetsDecoded + uncoded_pkts_.size();
+	packetsDecoded[source] = packetsDecoded[source] + uncoded_pkts_.size();
 	// total number of packets
 	numDecodedPackets = numDecodedPackets + uncoded_pkts_.size();
 
 	//std::cout << " NODE "<<getParentModule()->getFullName()<< " has decoded "<<packetsDecoded <<std::endl;
 
-	if (packetsDecoded == blockNumber) {
+	if (nodeRole == "STARPoint")
+	    std::cout<< " SONO VIVO. pacchetti decodificati per "<<source<<" " << packetsDecoded[source]<< " su "<<blockNumber << " nctable_size "<<nc_table.size() << std::endl;
+
+	if (udp_msg->getGeneration() == 16 and nodeRole == "STARPoint") {
+		std::cout << " DECODIFICA SORGENTE "<<source <<std::endl;
+		for (unsigned int i = 0; i < uncoded_pkts_.size(); i++ ) {
+			std::cout<< "Uncodedpacket: " << uncoded_pkts_[i]->toString()<< std::endl;
+		}
+	}
+
+	if (packetsDecoded[source] == blockNumber) {
 		// we have decoded all the packets so we have to increase the ack
 		// in the AP, reset the decoder
 
@@ -600,10 +631,12 @@ void UDPAppNC::processPacket(cPacket *msg) {
 		// increase the ack
 		//check_and_cast<UDPAppNC *>(getParentModule()->getParentModule()->getModuleByRelativePath(par("linked_AP_UDPApp").stringValue()))->incrementAckCounter();
 		//EV << "PRECRASH !! :" << source.c_str()<<":" << endl;
+
+		std::cout << " " << getFullPath() << " ha tutto invia ack. "<< std::endl;
 		check_and_cast<UDPAppNC *>(getParentModule()->getParentModule()->getModuleByRelativePath(source.c_str()))->incrementAckCounter();
 		//check_and_cast<UDPAppNC *>(getModuleByRelativePath(source.c_str()))->incrementAckCounter();
 
-		packetsDecoded = 0 ;
+		packetsDecoded[source] = 0 ;
 		delete decoder_;
 		decoder_table.erase(source);
 
@@ -651,6 +684,7 @@ void UDPAppNC::starProcessPacket() { //std::string source, payloadtable_t payloa
 			if ((*it).second.size() != blockNumber)
 				return;
 		}
+		std::cout << " STAR ha tutto si prepara a inviare"<<std::endl;
 
 
 		// create new coded Packets
@@ -720,6 +754,14 @@ void UDPAppNC::starProcessPacket() { //std::string source, payloadtable_t payloa
 			inner_table.clear();
 		}
 		nc_table.clear();
+
+		// clear memory
+		for (decoder_t::iterator it = decoder_table.begin(); it != decoder_table.end(); it++){
+			delete (*it).second;
+		}
+		decoder_table.clear();
+
+		std::cout << " ## CLEAR STAR TABLE ## "<<nc_table.size()<<std::endl;
 
 		//generation++;
 
@@ -841,7 +883,7 @@ void UDPAppNC::endProcessPacket() {
 
 		// if network coding is false we have already finished
 		if (par("butterfly_nc").boolValue() == false){
-			std::cout << " Arrivati tutti i pacchetti " << std::endl;
+			std::cout << " Arrivati tutti i pacchetti a " << getFullPath() << std::endl;
 		} else {
 
 			// get the decoded payloads
@@ -851,13 +893,16 @@ void UDPAppNC::endProcessPacket() {
 
 		// save statistics
 		simtime_t start_time = *(std::min_element( endpoint_start_time.begin(), endpoint_start_time.end() ));
+
+		std::cout << " # "<<getFullPath()<<" Salvo " << fabs(simTime() - start_time) << std::endl;
+
 		// send the interval to the statistic collector
 		check_and_cast<UDPAppNC *>(getParentModule()->getParentModule()->getModuleByRelativePath(par("statistics_collector").stringValue()))->saveStatistics(currentGeneration, fabs(simTime() - start_time));
 
+		endpoint_start_time.clear();
 
 		// simtime_t start_time = (udp_msg->getCreationTime() < previous_msg->getCreationTime()) ? udp_msg->getCreationTime() : previous_msg->getCreationTime();
 		// send to the statistic collector
-		std::cout << " # "<<getFullPath()<<" Salvo " << fabs(simTime() - start_time) << std::endl;
 
 		// clear nctable_t
 		for (nctable_t::iterator it = nc_table.begin(); it != nc_table.end(); it++){
