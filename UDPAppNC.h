@@ -62,13 +62,18 @@ class UDPAppNC : public UDPAppBase
 	int numSent;
 	int numReceived;
 	int numDecodedPackets;	// total number of decoded packets in the entire simulation
-
+	int numTransmissionGeneration;	// number of transmission per packet
+	int numRetransmission;	//number of retransmission after blocknumber packet
 
 	simtime_t gen_start_time;
 	simtime_t gen_end_time;
+	simtime_t generation_ival;
+	unsigned int total_generation;
+
     cOutVector GENERATIONTime;
     cOutVector PACKETTime;
     cOutVector BUTTERFLYGENERATIONTime;
+    simtime_t butterfly_ival;
 
 
 	virtual int numInitStages() const {return 4;}
