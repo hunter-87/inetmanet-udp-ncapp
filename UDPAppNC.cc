@@ -215,7 +215,7 @@ void UDPAppNC::finish(){
     	recordScalar("UDP_BUTTERFLY_IVAL", butterfly_ival/double(total_generation));
     }
 
-    if (nodeRole == "client"){
+    if (nodeRole == "client" or  nodeRole == "AP"){
     	recordScalar("UDP_RETRANSMISSION_MEAN", numTransmissionGeneration/double(total_generation));
     	recordScalar("UDP_RETRANSMISSION", numTransmissionGeneration);
 
