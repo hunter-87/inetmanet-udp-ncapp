@@ -216,7 +216,9 @@ void UDPAppNC::finish(){
     }
 
     if (nodeRole == "client"){
-    	recordScalar("UDP_RETRANSMISSION", numTransmissionGeneration/double(total_generation));
+    	recordScalar("UDP_RETRANSMISSION_MEAN", numTransmissionGeneration/double(total_generation));
+    	recordScalar("UDP_RETRANSMISSION", numTransmissionGeneration);
+
     }
 
 
@@ -314,6 +316,7 @@ void UDPAppNC::sendPacket(){
 
     numSent++;
 
+    numTransmissionGeneration++;
    // std::cout << simTime()<< " "<<getFullPath() << " sta inviando gen:"<<generation<<std::endl;
 }
 
@@ -458,8 +461,9 @@ void UDPAppNC::handleMessage(cMessage *msg)
 				generation_ival = generation_ival + fabs(gen_start_time - gen_end_time)/double(blockNumber);
 				total_generation ++;
 
-
-
+				numRetransmission = numRetransmission + (numTransmissionGeneration - blockNumber);
+				// reset the number o msg per generation
+				numTransmissionGeneration = 0;
 
 				//std::cout << " Received "<<ackCounter<<" ack. creating new set to send "<<std::endl;
 				//std::cout<<" GENERATION " <<fabs(gen_end_time - gen_start_time)<<std::endl;
@@ -642,7 +646,7 @@ void UDPAppNC::processPacket(cPacket *msg) {
 		// we have decoded all the packets so we have to increase the ack
 		// in the AP, reset the decoder
 
-		// save the generation decoded
+		// save the generation decodeds
 		generationDecoded[source] = udp_msg->getGeneration();
 
 		numRetransmission = numRetransmission + (numTransmissionGeneration - blockNumber);
